@@ -1,0 +1,106 @@
+#!/usr/bin/python
+
+#
+# Setup
+#
+
+from os     import environ
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if environ.get('FLASK_ENV') == 'development':
+    environ.setdefault( 'PYTHONDONTWRITEBYTECODE', '1' )
+
+import alembic.config
+import click
+import code
+
+@click.group()
+def whisk_cli():
+    pass
+
+#
+# DB
+#
+
+@whisk_cli.command( name='db:seed' )
+def db_seed(msg, model):
+    pass
+
+#
+# Migrations
+#
+
+@whisk_cli.command( name='migrate:auto' )
+@click.argument( 'msg' )
+@click.option( '--model', default=None )
+def migrate_auto(msg, model):
+    alembic.config.main(argv=[
+        'revision', '--autogenerate', '-m', msg
+    ])
+
+@whisk_cli.command( name='migrate:up' )
+@click.argument( 'mode' )
+def migrate_upgrade(mode):
+    alembic.config.main(argv=[
+        'upgrade', mode
+    ])
+
+@whisk_cli.command( name='migrate:down' )
+@click.argument( 'mode' )
+def migrate_downgrade(mode):
+    alembic.config.main(argv=[
+        'downgrade', mode
+    ])
+
+@whisk_cli.command( name='migrate' )
+@click.argument( 'slug' )
+@click.option( '--table', default=None )
+@click.option( '--model', default=None )
+def make_migration(slug, table, model):
+    alembic.config.main(argv=[
+        'revision', '-m', slug
+    ])
+
+#
+# Run
+#
+
+@whisk_cli.command()
+@click.option( '--host', default='0.0.0.0' )
+@click.option( '--port', default=5000 )
+def run(host, port):
+    from wsgi import application, run_simple
+    run_simple(host, port, application,
+               use_reloader=True, use_debugger=True)
+
+#
+# Repl
+#
+
+@whisk_cli.command()
+def repl():
+    from whisk.factory import create_app
+
+    app = create_app(__name__)
+    app.app_context().push()
+
+    import app.models
+
+    for name in dir(app.models):
+        if not name.startswith('_'):
+            attr = getattr( app.models, name )
+            if type(attr) is type(app.models.User):
+                locals()[name] = attr
+
+    from whisk.core import auth, db, jwt
+
+    code.interact( local=locals() )
+
+#
+# Execute
+#
+
+if __name__ == '__main__':
+    whisk_cli()

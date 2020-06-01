@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+  <h1>{{ user.email }}</h1>
+
+  <ul>
+    <li>id:    {{ user.id }}</li>
+    <li>email: {{ user.email }}</li>
+  </ul>
+
+  <p><a href="/users">Back</a></p>
+{% endblock %}
